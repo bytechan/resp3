@@ -99,7 +99,9 @@ func (r *Reader) ReadValue() (*Value, []byte, error) {
 	case TypeBoolean:
 		v.Boolean, err = r.readBoolean(line)
 	case TypeArray, TypeSet, TypePush:
-		v.Elems, err = r.readArray(line)
+		var count int
+		v.Elems, count, err = r.readArray(line)
+		v.Integer = int64(count)
 	case TypeMap:
 		v.KV, err = r.readMap(line)
 	}
@@ -175,21 +177,21 @@ func (r *Reader) readBoolean(line []byte) (bool, error) {
 	return false, ErrInvalidSyntax
 }
 
-func (r *Reader) readArray(line []byte) ([]*Value, error) {
+func (r *Reader) readArray(line []byte) ([]*Value, int, error) {
 	count, err := r.getCount(line)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var rt []*Value
 	for i := 0; i < count; i++ {
 		v, streamMarkerPrefix, err := r.ReadValue()
 		if err = isError(err, streamMarkerPrefix); err != nil {
-			return nil, err
+			return nil, count, err
 		}
 		rt = append(rt, v)
 	}
-	return rt, nil
+	return rt, count, nil
 }
 
 func isError(err error, streamMarkerPrefix []byte) error {

@@ -105,12 +105,23 @@ func (r *Value) SmartResult() interface{} {
 		return nil
 	case TypeBoolean:
 		return r.Boolean
-	case TypeArray, TypeSet, TypePush:
+	case TypeSet, TypePush:
 		var rt []interface{}
 		for _, elem := range r.Elems {
 			rt = append(rt, elem.SmartResult())
 		}
 		return rt
+
+	case TypeArray:
+		if r.Integer != -1 {
+			var rt []interface{}
+			for _, elem := range r.Elems {
+				rt = append(rt, elem.SmartResult())
+			}
+			return rt
+		} else {
+			return -1
+		}
 	case TypeMap:
 		var rt = linkedhashmap.New()
 		if r.KV != nil {
@@ -198,8 +209,17 @@ func (r *Value) toRESP3String(buf *strings.Builder) {
 		} else {
 			buf.WriteByte('f')
 		}
-	case TypeArray, TypeSet, TypePush:
+	case TypeSet, TypePush:
 		buf.WriteString(strconv.Itoa(len(r.Elems)))
+		buf.Write(CRLFByte)
+
+		for _, v := range r.Elems {
+			buf.WriteByte(v.Type)
+			v.toRESP3String(buf)
+		}
+		return
+	case TypeArray:
+		buf.WriteString(strconv.Itoa(int(r.Integer)))
 		buf.Write(CRLFByte)
 
 		for _, v := range r.Elems {
